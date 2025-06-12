@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Texas POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #070a11;
+            --bg-panel: #111827; /* gray-900 */
+            --bg-panel-light: #1f2937; /* gray-800 */
+            --accent-blue: #0ea5e9; /* sky-500 */
+            --accent-glow: 0 0 15px rgba(14, 165, 233, 0.5);
+            --text-primary: #f9fafb; /* gray-50 */
+            --text-secondary: #9ca3af; /* gray-400 */
+            --border-color: rgba(14, 165, 233, 0.2);
+        }
+        html, body {
+            overscroll-behavior: none;
+        }
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: -webkit-fill-available; /* Fix for mobile Safari viewport height */
+        }
+        .input-glow:focus {
+            box-shadow: var(--accent-glow);
+            border-color: var(--accent-blue);
+        }
+        .btn-active:active {
+            transform: scale(0.95);
+            filter: brightness(1.1);
+        }
+        .tab-active {
+            color: var(--accent-blue);
+            border-color: var(--accent-blue);
+            background-color: var(--bg-panel);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .fade-out { animation: fadeOut 0.4s ease-in forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.97); } }
+
+        .slide-in-up { animation: slideInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        @keyframes slideInUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+        
+        .slide-out-down { animation: slideOutDown 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards; }
+        @keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(100%); } }
+
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+          10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); }
+          30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        .pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(14, 165, 233, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0); }
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="main-container justify-center items-center p-8 bg-dark fade-in">
+        <h1 class="text-6xl font-bold text-sky-400 mb-2" style="text-shadow: var(--accent-glow);">TEXAS</h1>
+        <p class="text-gray-400 mb-8">Point of Sale</p>
+        <div class="w-full max-w-xs">
+            <label for="employee-id" class="text-sm font-medium text-gray-300 mb-2 block">รหัสพนักงาน</label>
+            <input type="password" id="employee-id" class="input-glow bg-gray-900 border-2 border-gray-700 text-white text-center text-3xl tracking-[0.5em] rounded-lg w-full p-4 transition-all duration-200 outline-none" placeholder="----">
+            <p id="login-error" class="text-red-400 text-center mt-3 h-5"></p>
+            <button id="login-button" class="btn-active w-full bg-sky-500 text-white font-bold py-4 rounded-lg mt-4 text-xl transition-transform">
+                เข้าสู่ระบบ
+            </button>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="main-container hidden">
+        
+        <!-- Header -->
+        <header class="flex-shrink-0 bg-gray-900/80 backdrop-blur-sm p-4 flex justify-between items-center border-b border-[var(--border-color)]">
+            <h2 id="view-title" class="text-xl font-bold text-sky-400">หน้าการขาย</h2>
+            <button onclick="logout()" class="text-gray-400 hover:text-white transition-colors"><i class="fas fa-sign-out-alt fa-lg"></i></button>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-grow overflow-hidden relative">
+            <!-- POS View -->
+            <div id="pos-view" class="h-full flex flex-col absolute inset-0 fade-in">
+                <div class="flex-shrink-0 p-3">
+                    <div id="category-tabs" class="flex space-x-2 border-b-2 border-gray-700 no-scrollbar overflow-x-auto"></div>
+                </div>
+                <div id="product-grid" class="flex-grow overflow-y-auto no-scrollbar grid grid-cols-2 sm:grid-cols-3 gap-3 p-3"></div>
+            </div>
+
+            <!-- History View -->
+            <div id="history-view" class="h-full flex flex-col absolute inset-0 hidden p-4">
+                <div id="history-list" class="flex-grow overflow-y-auto no-scrollbar space-y-3">
+                    <p id="no-history-msg" class="text-center text-gray-500 mt-10">ยังไม่มีประวัติการขาย</p>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Bottom Navigation -->
+        <nav class="flex-shrink-0 bg-gray-900/80 backdrop-blur-sm grid grid-cols-3 items-center p-2 border-t border-[var(--border-color)]">
+            <button id="nav-pos" onclick="switchView('pos')" class="nav-button p-3 rounded-lg flex flex-col items-center text-sky-500">
+                <i class="fas fa-cash-register fa-xl"></i>
+                <span class="text-xs mt-1">ขาย</span>
+            </button>
+            <button id="nav-cart" onclick="toggleCartModal(true)" class="nav-button relative btn-active transition-transform">
+                 <div class="bg-sky-500 text-white rounded-2xl p-4 shadow-lg shadow-sky-500/20">
+                     <i class="fas fa-shopping-cart fa-2x"></i>
+                 </div>
+                 <span id="cart-item-count" class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-gray-900 hidden">0</span>
+            </button>
+            <button id="nav-history" onclick="switchView('history')" class="nav-button p-3 rounded-lg flex flex-col items-center text-gray-400">
+                <i class="fas fa-history fa-xl"></i>
+                <span class="text-xs mt-1">ประวัติ</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black/70 flex flex-col justify-end hidden" onclick="toggleCartModal(false)">
+        <div id="cart-content" class="bg-panel max-h-[85vh] flex flex-col rounded-t-2xl hidden" onclick="event.stopPropagation()">
+            <header class="p-4 border-b border-[var(--border-color)] flex-shrink-0">
+                <h2 class="text-xl font-bold text-center text-sky-400">รายการสั่งซื้อ</h2>
+            </header>
+            <main id="cart-items" class="flex-grow overflow-y-auto p-4 space-y-3">
+                <p id="empty-cart-message" class="text-gray-500 text-center mt-10">ยังไม่มีสินค้าในตะกร้า</p>
+            </main>
+            <footer class="p-4 border-t border-[var(--border-color)] flex-shrink-0 bg-gray-900">
+                 <div class="flex justify-between items-center mb-4">
+                    <span class="text-lg font-medium text-gray-300">รวมทั้งหมด</span>
+                    <span id="modal-total-price" class="text-3xl font-bold text-sky-400">฿0</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="showPaymentModal('เงินสด')" class="btn-active bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg text-lg transition-all">เงินสด</button>
+                    <button onclick="showPaymentModal('เงินโอน')" class="btn-active bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-lg transition-all">เงินโอน</button>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Universal Modal -->
+    <div id="universal-modal" class="fixed inset-0 bg-black/70 flex justify-center items-center hidden p-4">
+        <div id="universal-modal-content" class="bg-panel-light rounded-2xl p-6 w-full max-w-sm text-center border border-[var(--border-color)]">
+        </div>
+    </div>
+    
+    <script>
+        // --- DATA ---
+        const productsData = { "บุหรี่": [{ id: 1, name: "บุหรี่ 40", price: 40 },{ id: 2, name: "วนิลา", price: 50 },{ id: 3, name: "ม่อน", price: 60 },{ id: 4, name: "กรองทิพย์อ่อน", price: 50 },{ id: 5, name: "กรองทิพย์แข็ง", price: 55 },{ id: 6, name: "จอร์น", price: 45 }], "ยาน้ำแก้ไอ": [{ id: 7, name: "ยา", price: 60 },{ id: 8, name: "ยาฝาเงิน", price: 60 },{ id: 9, name: "ยาฝาแดง", price: 70 }], "น้ำดิบ / ผสม": [{ id: 10, name: "น้ำดิบ", price: 40 },{ id: 11, name: "ผสมฝาเงิน", price: 80 },{ id: 12, name: "ผสมฝาแดง", price: 90 },{ id: 13, name: "ผสม 50", price: 50 },{ id: 14, name: "ผสม 90", price: 90 }], "อื่นๆ": [{ id: 15, name: "น้ำตาล", price: 12 },{ id: 16, name: "ใบ", price: 15 },{ id: 17, name: "น้ำแข็ง (5)", price: 5 },{ id: 18, name: "น้ำแข็ง (10)", price: 10 },{ id: 19, name: "น้ำแข็ง (20)", price: 20 }]};
+        const ADMIN_ID = '2483';
+        let cart = [];
+        let transactions = [];
+        let currentCategory = Object.keys(productsData)[0];
+        
+        // --- LOCAL STORAGE FUNCTIONS (ADDED) ---
+        const STORAGE_KEYS = {
+            cart: 'texas-pos-cart',
+            transactions: 'texas-pos-transactions'
+        };
+
+        function saveData(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (e) {
+                console.error("Error saving to localStorage", e);
+            }
+        }
+
+        function loadData(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.error("Error loading from localStorage", e);
+                return null;
+            }
+        }
+
+        // --- DOM Elements ---
+        const loginScreen = document.getElementById('login-screen');
+        const appContainer = document.getElementById('app-container');
+        const employeeIdInput = document.getElementById('employee-id');
+        const loginButton = document.getElementById('login-button');
+        const loginError = document.getElementById('login-error');
+
+        const viewTitle = document.getElementById('view-title');
+        const posView = document.getElementById('pos-view');
+        const historyView = document.getElementById('history-view');
+        const navPos = document.getElementById('nav-pos');
+        const navHistory = document.getElementById('nav-history');
+
+        const productGrid = document.getElementById('product-grid');
+        const categoryTabsContainer = document.getElementById('category-tabs');
+        
+        const cartModal = document.getElementById('cart-modal');
+        const cartContent = document.getElementById('cart-content');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const modalTotalPriceEl = document.getElementById('modal-total-price');
+        const cartItemCountEl = document.getElementById('cart-item-count');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+
+        const historyList = document.getElementById('history-list');
+        const noHistoryMsg = document.getElementById('no-history-msg');
+        
+        const universalModal = document.getElementById('universal-modal');
+        const universalModalContent = document.getElementById('universal-modal-content');
+
+        // --- LOGIN & LOGOUT ---
+        function handleLogin() {
+            if (employeeIdInput.value === ADMIN_ID) {
+                loginScreen.classList.add('fade-out');
+                setTimeout(() => {
+                    loginScreen.classList.add('hidden');
+                    appContainer.classList.remove('hidden');
+                    appContainer.classList.add('fade-in');
+                    initApp();
+                }, 400);
+            } else {
+                loginError.textContent = 'รหัสพนักงานไม่ถูกต้อง';
+                employeeIdInput.classList.add('shake');
+                setTimeout(() => {
+                    employeeIdInput.classList.remove('shake');
+                    loginError.textContent = '';
+                }, 1000);
+            }
+        }
+        
+        function logout() {
+            universalModalContent.innerHTML = `
+                <h3 class="text-xl font-semibold mb-4">ต้องการออกจากระบบ?</h3>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="confirmLogout()" class="btn-active bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-8 rounded-lg">ยืนยัน</button>
+                    <button onclick="closeModal()" class="btn-active bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-8 rounded-lg">ยกเลิก</button>
+                </div>`;
+            universalModal.classList.remove('hidden');
+            universalModalContent.classList.add('fade-in');
+        }
+        
+        function confirmLogout() {
+            location.reload();
+        }
+
+        // --- VIEW SWITCHING ---
+        function switchView(view) {
+            const currentActiveView = document.querySelector('.main-container main > div:not(.hidden)');
+            
+            if (currentActiveView.id === `${view}-view`) return;
+            
+            currentActiveView.classList.add('fade-out');
+            
+            setTimeout(() => {
+                currentActiveView.classList.add('hidden');
+                
+                if (view === 'pos') {
+                    viewTitle.innerText = 'หน้าการขาย';
+                    posView.classList.remove('hidden', 'fade-out');
+                    posView.classList.add('fade-in');
+                    navPos.classList.add('text-sky-500');
+                    navHistory.classList.remove('text-sky-500');
+                    navHistory.classList.add('text-gray-400');
+                } else {
+                    viewTitle.innerText = 'ประวัติการขาย';
+                    historyView.classList.remove('hidden', 'fade-out');
+                    historyView.classList.add('fade-in');
+                    navHistory.classList.add('text-sky-500');
+                    navPos.classList.remove('text-sky-500');
+                    navPos.classList.add('text-gray-400');
+                    renderHistory();
+                }
+            }, 300);
+        }
+
+        // --- RENDERING ---
+        function renderProducts() {
+            productGrid.innerHTML = '';
+            productsData[currentCategory].forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 rounded-lg p-3 flex flex-col items-center justify-center text-center cursor-pointer border border-transparent hover:border-sky-500 hover:bg-gray-700 transition-all duration-200 btn-active';
+                card.onclick = (e) => addToCart(product, e.currentTarget);
+                card.innerHTML = `
+                    <p class="font-semibold text-sm mb-2 h-10 flex items-center">${product.name}</p>
+                    <p class="text-lg font-bold text-sky-400">฿${product.price}</p>
+                `;
+                productGrid.appendChild(card);
+            });
+        }
+
+        function renderCategoryTabs() {
+            categoryTabsContainer.innerHTML = '';
+            Object.keys(productsData).forEach(category => {
+                const tab = document.createElement('button');
+                tab.innerText = category;
+                tab.className = `px-4 py-2 font-semibold border-b-2 transition-colors flex-shrink-0 rounded-t-md`;
+                tab.className += (category === currentCategory) ? ' tab-active' : ' border-transparent text-gray-400 hover:text-white';
+                tab.onclick = () => {
+                    currentCategory = category;
+                    renderCategoryTabs();
+                    renderProducts();
+                };
+                categoryTabsContainer.appendChild(tab);
+            });
+        }
+        
+        function renderHistory() {
+            historyList.innerHTML = '';
+            if (transactions.length === 0) {
+                noHistoryMsg.style.display = 'block';
+            } else {
+                noHistoryMsg.style.display = 'none';
+                [...transactions].reverse().forEach(tx => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'bg-gray-800 rounded-lg p-3 flex justify-between items-center cursor-pointer border border-gray-700 hover:border-sky-500 transition-all';
+                    itemEl.onclick = () => showHistoryDetail(tx.id);
+                    itemEl.innerHTML = `
+                        <div>
+                            <p class="font-semibold">รายการ #${tx.id}</p>
+                            <p class="text-sm text-gray-400">${tx.timestamp}</p>
+                        </div>
+                        <div class="text-right">
+                             <p class="font-bold text-lg text-sky-400">฿${tx.total}</p>
+                             <p class="text-sm font-semibold ${tx.paymentMethod === 'เงินสด' ? 'text-green-400' : 'text-blue-400'}">${tx.paymentMethod}</p>
+                        </div>
+                    `;
+                    historyList.appendChild(itemEl);
+                });
+            }
+        }
+
+        // --- CART LOGIC ---
+        function addToCart(product, element) {
+            const existingItem = cart.find(item => item.id === product.id);
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+            const cartBtn = document.getElementById('nav-cart');
+            cartBtn.classList.remove('pulse');
+            void cartBtn.offsetWidth;
+            cartBtn.classList.add('pulse');
+            
+            updateCartUI();
+        }
+
+        function changeQuantity(productId, change) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex > -1) {
+                cart[itemIndex].quantity += change;
+                if (cart[itemIndex].quantity <= 0) {
+                    cart.splice(itemIndex, 1);
+                }
+            }
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            cartItemsContainer.innerHTML = '';
+            if (cart.length === 0) {
+                emptyCartMessage.style.display = 'block';
+            } else {
+                emptyCartMessage.style.display = 'none';
+                cart.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'flex justify-between items-center bg-gray-900 p-3 rounded-lg fade-in';
+                    itemEl.innerHTML = `
+                        <div>
+                            <p class="font-medium">${item.name}</p>
+                            <p class="text-sm text-gray-400">฿${item.price}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="changeQuantity(${item.id}, -1)" class="btn-active w-8 h-8 bg-red-600 rounded-full font-bold text-lg transition-transform">-</button>
+                            <span class="font-bold text-lg w-8 text-center">${item.quantity}</span>
+                            <button onclick="changeQuantity(${item.id}, 1)" class="btn-active w-8 h-8 bg-green-600 rounded-full font-bold text-lg transition-transform">+</button>
+                        </div>
+                    `;
+                    cartItemsContainer.appendChild(itemEl);
+                });
+            }
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            modalTotalPriceEl.innerText = `฿${total}`;
+            cartItemCountEl.innerText = itemCount;
+
+            if (itemCount > 0) {
+                cartItemCountEl.classList.remove('hidden');
+                cartItemCountEl.classList.add('fade-in');
+            } else {
+                cartItemCountEl.classList.add('hidden');
+                if (!cartModal.classList.contains('hidden')) {
+                    toggleCartModal(false);
+                }
+            }
+            
+            // Save cart to localStorage on every update
+            saveData(STORAGE_KEYS.cart, cart);
+        }
+        
+        function toggleCartModal(show) {
+            if (show) {
+                if (cart.length === 0) return;
+                cartModal.classList.remove('hidden');
+                cartContent.classList.remove('hidden', 'slide-out-down');
+                cartContent.classList.add('slide-in-up');
+            } else {
+                cartContent.classList.remove('slide-in-up');
+                cartContent.classList.add('slide-out-down');
+                setTimeout(() => cartModal.classList.add('hidden'), 400);
+            }
+        }
+
+        // --- PAYMENT & MODALS ---
+        function showPaymentModal(type) {
+             if (cart.length === 0) return;
+             const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+             universalModalContent.innerHTML = `
+                <h3 class="text-2xl font-semibold mb-2">ยืนยันการชำระเงิน</h3>
+                <p class="text-lg font-semibold ${type === 'เงินสด' ? 'text-green-400' : 'text-blue-400'} mb-4">${type}</p>
+                <p class="text-5xl font-bold text-sky-400 mb-6">฿${total}</p>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="processPayment('${type}')" class="btn-active bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-8 rounded-lg transition-all">ยืนยัน</button>
+                    <button onclick="closeModal()" class="btn-active bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-8 rounded-lg transition-all">ยกเลิก</button>
+                </div>`;
+            openModal();
+        }
+        
+        function processPayment(paymentMethod) {
+            const now = new Date();
+            const newTransaction = {
+                id: (transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) : 0) + 1,
+                items: JSON.parse(JSON.stringify(cart)),
+                total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+                paymentMethod: paymentMethod,
+                timestamp: `${now.toLocaleDateString('th-TH')} ${now.toLocaleTimeString('th-TH')}`
+            };
+            transactions.push(newTransaction);
+            saveData(STORAGE_KEYS.transactions, transactions); // Save transactions
+            
+            cart = [];
+            updateCartUI(); // This will also save the now-empty cart
+            
+            universalModalContent.innerHTML = `
+                <div class="text-center">
+                   <i class="fas fa-check-circle text-green-400 text-6xl mb-4"></i>
+                   <h3 class="text-2xl font-semibold">บันทึกสำเร็จ</h3>
+                   <p class="text-gray-400">รายการ #${newTransaction.id} ถูกบันทึกแล้ว</p>
+                </div>`;
+            setTimeout(closeModal, 1500);
+        }
+
+        function showHistoryDetail(txId) {
+            const tx = transactions.find(t => t.id === txId);
+            if (!tx) return;
+            
+            let itemsHtml = tx.items.map(item => `
+                <div class="flex justify-between items-center text-left py-2 border-b border-gray-700/50">
+                    <span>${item.name} <span class="text-gray-400">x ${item.quantity}</span></span>
+                    <span class="font-semibold">฿${item.price * item.quantity}</span>
+                </div>`).join('');
+
+            universalModalContent.innerHTML = `
+                <h3 class="text-xl font-semibold mb-2">รายละเอียด #${tx.id}</h3>
+                <p class="text-sm text-gray-400 mb-4">${tx.timestamp}</p>
+                <div class="text-sm my-4">${itemsHtml}</div>
+                <div class="flex justify-between items-center mt-4 pt-2 border-t border-sky-500/30">
+                    <span class="font-bold text-lg">${tx.paymentMethod}</span>
+                    <span class="font-bold text-2xl text-sky-400">รวม: ฿${tx.total}</span>
+                </div>
+                 <button onclick="closeModal()" class="btn-active w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded-lg mt-6">ปิด</button>`;
+            openModal();
+        }
+
+        function openModal() {
+            universalModal.classList.remove('hidden');
+            universalModalContent.classList.remove('fade-out');
+            universalModalContent.classList.add('fade-in');
+        }
+        
+        function closeModal() {
+            universalModalContent.classList.remove('fade-in');
+            universalModalContent.classList.add('fade-out');
+            setTimeout(() => universalModal.classList.add('hidden'), 300);
+        }
+
+        // --- INITIALIZATION ---
+        function initApp() {
+            // Load data from localStorage
+            cart = loadData(STORAGE_KEYS.cart) || [];
+            transactions = loadData(STORAGE_KEYS.transactions) || [];
+            
+            renderCategoryTabs();
+            renderProducts();
+            updateCartUI();
+            switchView('pos');
+        }
+
+        loginButton.addEventListener('click', handleLogin);
+        employeeIdInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    </script>
+</body>
+</html>
